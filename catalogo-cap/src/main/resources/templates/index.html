@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hats Gallery | Catalogo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-body: #f8fafc;
+            --text-main: #1e293b;
+            --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --radius: 16px;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+        }
+
+        .header-section {
+            padding: 3rem 0;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            margin-bottom: 3rem;
+            border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        /* Card Interattiva */
+        .card-hhat {
+            border: none;
+            border-radius: var(--radius);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden; /* Importante per l'immagine */
+        }
+
+        .card-hhat:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Container Immagine */
+        .hat-image-container {
+            height: 200px;
+            width: 100%;
+            background-color: #f1f5f9;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .hat-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .card-hhat:hover .hat-image {
+            transform: scale(1.1);
+        }
+
+        .card-actions {
+            position: relative;
+            z-index: 5;
+        }
+
+        .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background-color: var(--primary); border: none; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+
+        .search-bar {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-top: -50px;
+            z-index: 10;
+            position: relative;
+        }
+
+        .hat-badge {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .price-tag {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .clear-search {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .clear-search:hover { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <header class="header-section shadow-lg">
+        <div class="container text-center">
+            <h1 class="display-4 fw-bold">Hats Gallery</h1>
+            <p class="lead opacity-75">La tua collezione privata, con un tocco di stile</p>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <div class="search-bar mb-5">
+            <form action="/" method="get" class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Cerca un modello..." th:value="${search}" />
+                        <button th:if="${search != null and !search.isEmpty()}" type="button" class="input-group-text bg-transparent clear-search" onclick="window.location.href='/'">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                        <button class="btn btn-primary" type="submit">Cerca</button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="/new" class="btn btn-primary me-2"><i class="bi bi-plus-lg me-1"></i> Nuovo Cappello</a>
+                    <a href="/svuota" class="btn btn-outline-danger" onclick="return confirm('Sei sicuro di voler svuotare tutto?')">Svuota</a>
+                </div>
+            </form>
+        </div>
+
+        <div th:if="${deleted}" class="alert alert-warning alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px;">
+            <i class="bi bi-info-circle me-2"></i>
+            <span th:text="${deleted}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div th:if="${cappelli.empty}" class="text-center py-5">
+            <i class="bi bi-search-heart display-1 text-muted"></i>
+            <h3 class="mt-3">Nessun cappello trovato</h3>
+            <a href="/" class="btn btn-outline-primary mt-2">Mostra tutto</a>
+        </div>
+
+        <div class="row g-4" th:unless="${cappelli.empty}">
+            <div class="col-md-6 col-lg-4" th:each="c : ${cappelli}">
+                <div class="card card-hhat h-100 p-3 shadow-sm">
+                    
+                    <a th:href="@{/item/{id}(id=${c.id})}" class="stretched-link"></a>
+
+                    <div class="hat-image-container mb-3">
+                        <img th:if="${c.immagine != null and !c.immagine.isEmpty()}" 
+                             th:src="@{'/uploads/' + ${c.immagine}}" 
+                             class="hat-image" 
+                             alt="Immagine cappello">
+                        
+                        <img th:unless="${c.immagine != null and !c.immagine.isEmpty()}" 
+                             src="https://images.unsplash.com/photo-1588850561407-ed78c282e89b?q=80&w=600&auto=format&fit=crop" 
+                             class="hat-image" 
+                             alt="Immagine non disponibile">
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="hat-badge mb-2 d-inline-block" th:text="${c.marca}">Marca</span>
+                            <h5 class="card-title fw-bold mb-0" th:text="${c.nome}">Nome Cappello</h5>
+                        </div>
+                        <div class="price-tag" th:text="${c.prezzo} + '€'">0€</div>
+                    </div>
+                    
+                    <div class="text-muted small mb-3">
+                        <span class="me-3"><i class="bi bi-rulers me-1"></i> <span th:text="${c.taglia}">XL</span></span>
+                        <span><i class="bi bi-calendar3 me-1"></i> <span th:text="${c.anno}">2023</span></span>
+                    </div>
+                    
+                    <div class="card-actions mt-auto d-flex gap-2 pt-3 border-top">
+                        <a th:href="@{/edit/{id}(id=${c.id})}" class="btn btn-outline-primary btn-sm flex-grow-1">
+                            <i class="bi bi-pencil-square me-1"></i> Modifica
+                        </a>
+                        <a th:href="@{/delete/{id}(id=${c.id})}" 
+                           class="btn btn-outline-danger btn-sm flex-grow-1" 
+                           onclick="return confirm('Vuoi davvero eliminarlo?')">
+                            <i class="bi bi-trash me-1"></i> Elimina
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="py-5 text-center text-muted">
+        <hr class="w-25 mx-auto mb-4 opacity-10">
+        <small>&copy; 2026 Hats Gallery • Inventario Esclusivo</small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
