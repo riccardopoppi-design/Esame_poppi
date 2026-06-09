@@ -1,0 +1,48 @@
+# Relazione Tecnica - Esame UF13 (Sviluppi SpringBoot)
+**Studente:** Riccardo Poppi  
+**Data di Consegna:** 31 Luglio  
+
+---
+
+## 1. Introduzione e Scelte Progettuali
+La presente relazione descrive le evoluzioni infrastrutturali e software apportate al progetto Spring Boot originale, focalizzandosi sulla standardizzazione delle risposte, sulla gestione centralizzata delle anomalie (Task 1) e sulla containerizzazione efficiente basata su profili isolati (Task 2).
+
+---
+
+## 2. Task 1: Standardizzazione delle Risposte e Centralizzazione degli Errori
+
+### Scelte Progettuali & Architettura
+Per eliminare la frammentazione delle risposte e garantire un contratto unico e prevedibile verso il frontend, è stata implementata l'architettura standardizzata basata sul pattern **JSend** (`success`, `fail`, `error`).
+
+1. **Struttura `APIResponse<T>`**: Creata una classe generica polimorfa per incapsulare i dati di successo e i metadati di fallimento, garantendo la tipizzazione esplicita (vietando l'uso di tipi generici indefiniti).
+2. **Validazione Real-Time**: Configurato il layer dei DTO (`CappelloRequestDTO`) tramite annotazioni di Jakarta Validation (`@NotBlank`, `@Min`). Le richieste in ingresso nei Controller grafici e REST vengono validate preventivamente tramite `@Valid`. In caso di violazione dei vincoli, l'applicazione intercetta l'anomalia restituendo uno stato `400 Bad Request`.
+3. **Isolamento delle Eccezioni**: È stato rimosso qualsiasi blocco `try-catch` ridondante all'interno dei Controller. La gestione del flusso d'errore è completamente delegata a un componente centralizzato.
+4. **Global Exception Handler**: Implementato un `GlobalExceptionHandler` annotato con `@ControllerAdvice`. Il componente intercetta specificamente:
+   * `MethodArgumentNotValidException`: formattando l'errore come `fail` con una mappa dettagliata "campo-errore".
+   * `NoSuchElementException` / `ResponseStatusException`: formattando il rispettivo corpo di risposta in conformità allo standard JSend.
+
+### Criteri di Accettazione Soddisfatti
+* Nessuna esposizione diretta delle entità JPA.
+* Struttura JSON uniforme per tutti gli endpoint REST (`/api/cappelli`).
+* Messaggi d'errore localizzati e puntuali per ogni campo non valido senza fughe di stack trace.
+
+---
+
+## 3. Task 2: Containerizzazione Multi-Stage e Isolamento dei Profili
+
+### Architettura del Dockerfile Multi-Stage
+Per ottimizzare il deployment in produzione e ridurre l'impronta di memoria dell'immagine finale, il `Dockerfile` è stato ingegnerizzato in due stadi distinti (*Multi-Stage Build*):
+* **Stage 1 (Build - `maven:3.9.6-eclipse-temurin-21`)**: Dedicato esclusivamente all'ambiente di compilazione. Copia il codice sorgente, risolve le dipendenze in modalità offline per sfruttare i layer di cache e compila l'artefatto eseguibile (`mvn clean package -DskipTests`).
+* **Stage 2 (Esecuzione - `eclipse-temurin:21-jre-alpine`)**: Un'immagine runtime minimale basata su Alpine Linux. Copia esclusivamente il file `.jar` generato dallo stage precedente. Strumenti di build, codice sorgente e file di configurazione Maven vengono interamente scartati, garantendo un'immagine finale sicura, leggera e ottimizzata per il cloud.
+
+### Gestione e Isolamento dei Profili (Logback)
+Il comportamento dell'applicazione si adatta dinamicamente all'ambiente tramite i profili Spring configurati nel file `logback-spring.xml`:
+* **Profilo `dev` (Sviluppo)**: Attivo di default. Configura il logging a livello `TRACE` sul pacchetto principale e abilita il tracciamento a schermo delle query SQL generate da Hibernate (`org.hibernate.SQL`).
+* **Profilo `prod` (Produzione)**: Imposta il livello di log globale su `INFO`. Reindirizza l'output su un file rotante a tempo e dimensione posizionato sull'host (`logs/applicazione-prod.log`), mantenendo una cronologia di 30 giorni e un tetto massimo di 1GB per prevenire la saturazione del disco.
+
+---
+
+## 4. Test Eseguiti e Criteri di Accettazione
+1. **Verifica Validazione**: Inviata una richiesta POST con payload non valido (es. prezzo negativo). Risultato: `400 Bad Request` con mappa degli errori strutturata in JSON.
+2. **Verifica Risorsa Non Trovata**: Richiesto un ID inesistente tramite GET. Risultato: Risposta JSend con stato `error` e codice HTTP appropriato gestito dal `GlobalExceptionHandler`.
+3. **Verifica Compilazione Docker**: Eseguito con successo il comando `docker build -t catalogo-cap-prod .`. L'immagine finale è stata generata isolando l'ambiente JRE minimale.
