@@ -10,9 +10,9 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @RestController
@@ -36,13 +36,15 @@ public class CappelloRestController {
     @GetMapping("/item/{codice}")
     public APIResponse<CappelloResponseDTO> getByCodice(@PathVariable String codice) {
         Cappello cappello = cappelloRepository.findByCodice(codice)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cappello non trovato con codice: " + codice));
+                .orElseThrow(() -> new NoSuchElementException("Cappello non trovato con codice: " + codice));
         return APIResponse.success(convertToResponseDTO(cappello));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public APIResponse<CappelloResponseDTO> create(@Valid @RequestBody CappelloRequestDTO requestDTO) {
+        // Vincolo validazione: se i dati non sono validi, l'esecuzione non entra nemmeno nel metodo
+        // grazie a @Valid, e viene gestita direttamente dall'ExceptionHandler in automatico.
         Cappello cappello = new Cappello();
         BeanUtils.copyProperties(requestDTO, cappello);
         
@@ -54,7 +56,7 @@ public class CappelloRestController {
     @Transactional
     public APIResponse<String> deleteByCodice(@PathVariable String codice) {
         cappelloRepository.findByCodice(codice)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Impossibile eliminare: codice " + codice + " inesistente."));
+                .orElseThrow(() -> new NoSuchElementException("Impossibile eliminare: codice " + codice + " inesistente."));
         
         cappelloRepository.deleteByCodice(codice);
         return APIResponse.success("Elemento rimosso correttamente dal catalogo.");
