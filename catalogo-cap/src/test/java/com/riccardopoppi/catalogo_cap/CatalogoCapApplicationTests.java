@@ -8,6 +8,7 @@ class CatalogoCapApplicationTests {
 
 	@Test
 	void contextLoads() {
+		// Verifica semplicemente che l'applicazione Spring si avvii correttamente
 	}
 
 }

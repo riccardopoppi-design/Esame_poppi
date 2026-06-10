@@ -46,3 +46,32 @@ Il comportamento dell'applicazione si adatta dinamicamente all'ambiente tramite 
 1. **Verifica Validazione**: Inviata una richiesta POST con payload non valido (es. prezzo negativo). Risultato: `400 Bad Request` con mappa degli errori strutturata in JSON.
 2. **Verifica Risorsa Non Trovata**: Richiesto un ID inesistente tramite GET. Risultato: Risposta JSend con stato `error` e codice HTTP appropriato gestito dal `GlobalExceptionHandler`.
 3. **Verifica Compilazione Docker**: Eseguito con successo il comando `docker build -t catalogo-cap-prod .`. L'immagine finale è stata generata isolando l'ambiente JRE minimale.
+
+
+
+
+## Task 3: Monitoraggio Proattivo e Sistemi di Alerting
+
+### 1. Scelte Progettuali e Architettura
+Per soddisfare la richiesta di una "cabina di regia" centralizzata, è stata implementata un'architettura di monitoraggio standard basata su tre componenti chiave:
+* **Spring Boot Actuator & Micrometer:** L'applicazione espone le metriche interne (JVM, CPU, Thread, richieste HTTP) tramite l'endpoint nativo `/actuator/prometheus`. Micrometer si occupa di formattare queste metriche nel linguaggio comprensibile da Prometheus.
+* **Prometheus:** Configurato all'interno dell'infrastruttura Docker, esegue lo *scraping* (raccolta dati) periodico interpellando l'applicazione containerizzata.
+* **Grafana:** Agganciato a Prometheus come Data Source, offre una dashboard visiva in tempo reale per l'analisi dei parametri vitali della JVM.
+
+### 2. Dettagli di Configurazione e Vincoli Soddisfatti
+* **Isolamento di Rete (Docker Compose):** Tutti i servizi (`app_cappelli`, `db`, `prometheus`, `grafana`) comunicano all'interno della stessa rete Docker. 
+* **Allineamento Porte:** A seguito di verifiche sui log di avvio del container dell'applicazione (eseguita sulla porta interna `8081`), il file di configurazione `prometheus.yml` è stato mappato sul target `app:8081` per garantire lo stato di salute **UP** del flusso di scraping.
+
+### 3. Criteri di Accettazione e Configurazione dell'Alerting
+In conformità con le specifiche di business, è stata definita una **Alert Rule** su Grafana denominata `Soglia Critica Errori 500` all'interno del gruppo di valutazione `WebErrors`.
+
+* **Metrica Monitorata (PromQL):** ```promql
+    sum(increase(http_server_requests_seconds_count{status="500"}[5m]))
+    ```
+* **Soglia di Scatto:** L'allarme passa dallo stato *Normal* allo stato *Pending* (e successivamente *Firing* dopo 1 minuto) qualora il numero di risposte con stato HTTP 500 sia **maggiore di 10** in un intervallo temporale di 5 minuti.
+
+### 4. Test Eseguiti e Validazione
+Il corretto funzionamento della Task 3 è stato validato attraverso i seguenti step:
+1.  **Verifica dello Scraper:** Controllo dell'endpoint `http://localhost:9090/targets` su Prometheus, che evidenzia lo stato **UP** stabile per il job `spring-boot-app`.
+2.  **Verifica del Flusso Metriche:** Query diretta sul pannello di Prometheus per la metrica `http_server_requests_seconds_count` che restituisce correttamente i contatori suddivisi per codice di stato (es. 200 SUCCESS).
+3.  **Popolamento Dashboard:** Collegamento riuscito su Grafana (`http://localhost:3000`) impostando le variabili `Application` e `Instance`, con conseguente visualizzazione dei grafici dinamici relativi a Heap Memory e Thread attivi.
