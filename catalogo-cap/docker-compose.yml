@@ -1,4 +1,5 @@
 services:
+  # 1. IL TUO DATABASE MYSQL (Invariato)
   db:
     image: mysql:9.0
     container_name: mysql_cappelli
@@ -13,6 +14,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
+  # 2. LA TUA APPLICAZIONE SPRING BOOT (Invariata)
   app:
     build: .
     container_name: app_cappelli
@@ -30,9 +32,40 @@ services:
     volumes:
       - ./uploads:/app/uploads 
 
+  # 3. PROMETHEUS (Nuovo - Monitoraggio)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_server
+    restart: always
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - app
+
+  # 4. GRAFANA (Nuovo - Dashboard visiva)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_dashboard
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - app-network
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   db_data:
+  grafana_data:
