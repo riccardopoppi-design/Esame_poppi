@@ -7,19 +7,25 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
+        
         <logger name="org.hibernate.SQL" level="TRACE"/>
-        <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
+        <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+        
         <logger name="com.riccardopoppi.catalogo_cap" level="TRACE"/>
     </springProfile>
 
     <springProfile name="prod">
         <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>logs/applicazione-prod.log</file>
-            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-                <fileNamePattern>logs/applicazione-prod-%d{yyyy-MM-dd}.log</fileNamePattern>
+            
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/applicazione-prod-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                
+                <maxFileSize>10MB</maxFileSize>
                 <maxHistory>30</maxHistory>
                 <totalSizeCap>1GB</totalSizeCap>
             </rollingPolicy>
+            
             <encoder>
                 <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
             </encoder>
