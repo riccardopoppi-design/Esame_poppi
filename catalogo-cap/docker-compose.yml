@@ -13,6 +13,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
 
+# 2. LA TUA APPLICAZIONE SPRING BOOT (Invariata)
   app:
     build: .
     container_name: app_cappelli
@@ -20,15 +21,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/catalogo_db?allowPublicKeyRetrieval=true&useSSL=false
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      - SPRING_PROFILES_ACTIVE=prod  # <--- RIGA AGGIUNTA PER ATTIVARE IL PROFILO DI PROD
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/catalogo_db?allowPublicKeyRetrieval=true&useSSL=false
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
     networks:
       - app-network
     depends_on:
       - db
     volumes:
-      - ./uploads:/app/uploads 
+      - ./uploads:/app/uploads
 
 networks:
   app-network:
