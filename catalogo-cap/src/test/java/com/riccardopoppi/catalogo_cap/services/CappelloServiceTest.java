@@ -7,14 +7,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.*;
-
+// Usiamo l'estensione Mockito per un test d'unità puro e velocissimo (senza caricare Spring)
 @ExtendWith(MockitoExtension.class)
 public class CappelloServiceTest {
 
@@ -25,30 +25,30 @@ public class CappelloServiceTest {
     private CappelloService cappelloService;
 
     @Test
-    public void salvaCappello_DeveGarantireAzzeramentoID_PerPrevenireScrittureMaliziose() {
-        // GIVEN: Il client tenta di forzare un ID esistente
-        Cappello cappelloInviato = new Cappello();
-        UUID idForzato = UUID.randomUUID();
-        cappelloInviato.setId(idForzato); 
-        cappelloInviato.setNome("Cap Test");
+    public void save_DeveAzzuerareIdEInvocareRepository_QuandoOggettoValido() {
+        // 1. PREPARAZIONE (Arrange)
+        Cappello inputCappello = new Cappello();
+        inputCappello.setId(UUID.randomUUID()); // Impostiamo un ID fittizio per verificare che venga azzerato
+        inputCappello.setCodice("CAP-NEW");
+        inputCappello.setNome("Berretto Invernale");
 
-        // Prepariamo l'oggetto che simula l'output del DB (con un NUOVO id generato dal sistema)
-        Cappello cappelloSalvatoNelDb = new Cappello();
-        UUID idNuovo = UUID.randomUUID();
-        cappelloSalvatoNelDb.setId(idNuovo);
-        cappelloSalvatoNelDb.setNome("Cap Test");
+        Cappello savedCappelloMock = new Cappello();
+        savedCappelloMock.setId(UUID.randomUUID()); // Simula l'ID generato dal database dopo il salvataggio
+        savedCappelloMock.setCodice("CAP-NEW");
+        savedCappelloMock.setNome("Berretto Invernale");
 
-        // Stubbiato in modo generico per evitare conflitti di mutazione dell'oggetto durante l'esecuzione
-        when(cappelloRepository.save(any(Cappello.class))).thenReturn(cappelloSalvatoNelDb);
+        // Configura il mock per rispondere quando viene chiamato il save
+        when(cappelloRepository.save(argThat(c -> c.getId() == null))).thenReturn(savedCappelloMock);
 
-        // WHEN: Eseguiamo la logica di business
-        Cappello risultato = cappelloService.save(cappelloInviato);
+        // 2. ESECUZIONE (Act)
+        Cappello risultato = cappelloService.save(inputCappello);
 
-        // THEN: Verifiche sul risultato
+        // 3. VERIFICA DEI VINCOLI (Assert & Verify)
         assertNotNull(risultato);
-        assertEquals(idNuovo, risultato.getId());
-
-        // VERIFY & ARGUMENT MATCHER: Dimostriamo al QA che il Service ha azzerato l'id PRIMA di toccare il DB
-        verify(cappelloRepository, times(1)).save(argThat(cappello -> cappello.getId() == null));
+        
+        // VINCOLO SODDISFATTO: Verifica che la repository sia stata invocata con l'ID azzerato (null)
+        verify(cappelloRepository).save(argThat(cappello -> {
+            return cappello.getId() == null && "CAP-NEW".equals(cappello.getCodice());
+        }));
     }
 }
